@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAKER SMS - API Docs</title>
+    <style>
+        :root {
+            --bg: #0a0a1a; --card: #13132b; --purple: #6366f1;
+            --text: #e2e8f0; --text2: #94a3b8; --border: #1e1e3a;
+            --green: #4ade80; --input: #0d0d22;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); }
+        .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--purple), #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .endpoint { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 20px; }
+        .method { display: inline-block; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; margin-right: 10px; }
+        .method-get { background: #4ade8033; color: #4ade80; }
+        .method-post { background: #6366f133; color: #6366f1; }
+        .method-delete { background: #f8717133; color: #f87171; }
+        .url { font-family: 'JetBrains Mono', monospace; font-size: 14px; color: var(--green); word-break: break-all; }
+        pre { background: var(--input); padding: 15px; border-radius: 10px; overflow-x: auto; font-size: 13px; margin: 10px 0; }
+        .prefix-btn { display: inline-block; padding: 8px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 20px; color: var(--text); cursor: pointer; margin: 5px; font-size: 13px; }
+        .prefix-btn:hover { border-color: var(--purple); color: var(--purple); }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">TAKER SMS</div>
+        <a href="/dashboard" style="color:var(--purple);text-decoration:none;">← Dashboard</a>
+    </div>
+
+    <div class="container">
+        <h2 style="margin-bottom:10px;">📚 API Documentation</h2>
+        <p style="color:var(--text2);margin-bottom:25px;">Use the following endpoints to integrate TAKER SMS into your applications.</p>
+
+        <div class="card" style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px;margin-bottom:25px;">
+            <h3>🔑 Base URL</h3>
+            <pre id="baseUrl">https://taker-sms.onrender.com</pre>
+            <h3 style="margin-top:15px;">🔐 Authentication</h3>
+            <p style="color:var(--text2);">Include your API key in the header:</p>
+            <pre>mauthapi: YOUR_API_KEY</pre>
+        </div>
+
+        <div class="endpoint">
+            <span class="method method-post">POST</span>
+            <span class="url">/api/v1/get-number</span>
+            <p style="color:var(--text2);margin:10px 0;">Request new virtual numbers</p>
+            <pre>{
+    "prefix": "26134",
+    "quantity": 1
+}</pre>
+            <p style="color:var(--text2);">Response:</p>
+            <pre>{
+    "success": true,
+    "numbers": ["26134123456"]
+}</pre>
+        </div>
+
+        <div class="endpoint">
+            <span class="method method-get">GET</span>
+            <span class="url">/api/v1/check-otp</span>
+            <p style="color:var(--text2);margin:10px 0;">Get received OTP codes</p>
+            <p style="color:var(--text2);">Response:</p>
+            <pre>{
+    "otps": [{
+        "number": "26134123456",
+        "code": "490782",
+        "message": "490782 is your Instagram code.",
+        "app": "Instagram"
+    }]
+}</pre>
+        </div>
+
+        <div class="endpoint">
+            <span class="method method-get">GET</span>
+            <span class="url">/api/v1/numbers</span>
+            <p style="color:var(--text2);margin:10px 0;">List all allocated numbers</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method method-get">GET</span>
+            <span class="url">/api/v1/balance</span>
+            <p style="color:var(--text2);margin:10px 0;">Check your balance</p>
+        </div>
+
+        <div class="endpoint">
+            <span class="method method-post">POST</span>
+            <span class="url">/api/v1/delete-number</span>
+            <p style="color:var(--text2);margin:10px 0;">Delete a specific number</p>
+            <pre>{
+    "number_id": 1
+}</pre>
+        </div>
+
+        <h3 style="margin-bottom:15px;">🌍 Popular Prefixes</h3>
+        <div>
+            <span class="prefix-btn" onclick="copyText('22501')">22501 🇨🇮 Ivory Coast</span>
+            <span class="prefix-btn" onclick="copyText('23276')">23276 🇸🇱 Sierra Leone</span>
+            <span class="prefix-btn" onclick="copyText('26134')">26134 🇲🇬 Madagascar</span>
+            <span class="prefix-btn" onclick="copyText('249')">249 🇸🇩 Sudan</span>
+            <span class="prefix-btn" onclick="copyText('20')">20 🇪🇬 Egypt</span>
+            <span class="prefix-btn" onclick="copyText('1')">1 🇺🇸 USA</span>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('baseUrl').textContent = window.location.origin;
+        
+        function copyText(text) {
+            navigator.clipboard.writeText(text);
+            alert('Copied: ' + text);
+        }
+    </script>
+</body>
+</html>
