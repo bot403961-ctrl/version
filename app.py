@@ -1,34 +1,83 @@
 #!/usr/bin/env python3
 # ============================================
 #  TAKER SMS - Full Dashboard Web App
-#  Flask + Supabase
+#  Flask + SQLite
 # ============================================
 
 import os
-import re
-import uuid
 import random
 import string
 import hashlib
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-from supabase import create_client, Client
+import sqlite3
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24).hex()
 
-# ============================================
-# SUPABASE CONFIG
-# ============================================
-SUPABASE_URL = 'https://qvbtzeqvteavcczrywoi.supabase.co'
-SUPABASE_KEY = 'sb_secret_xcXTo3D54dDg6OGeEAO8vA_4Ci0QpNO'
+DB = "taker.db"
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+def init_db():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        username TEXT UNIQUE NOT NULL,
+        telegram TEXT,
+        password TEXT NOT NULL,
+        api_key TEXT UNIQUE NOT NULL,
+        balance REAL DEFAULT 0,
+        total_earned REAL DEFAULT 0,
+        total_withdrawn REAL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS numbers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        number TEXT NOT NULL,
+        prefix TEXT,
+        country TEXT,
+        status TEXT DEFAULT 'waiting',
+        source TEXT DEFAULT 'web',
+        otp_code TEXT,
+        otp_message TEXT,
+        app_name TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER,
+        type TEXT,
+        amount REAL,
+        method TEXT,
+        account TEXT,
+        status TEXT DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    c.execute('''CREATE TABLE IF NOT EXISTS console_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        number TEXT,
+        prefix TEXT,
+        message TEXT,
+        app_name TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    conn.commit()
+    conn.close()
 
-# ============================================
-# HELPERS
-# ============================================
+def query(sql, params=(), fetchone=False, fetchall=False):
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    c.execute(sql, params)
+    if fetchone: result = c.fetchone()
+    elif fetchall: result = c.fetchall()
+    else: result = None
+    conn.commit()
+    conn.close()
+    return result
+
 def login_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
@@ -41,33 +90,24 @@ def generate_api_key():
     return 'TAKER-' + ''.join(random.choices(string.ascii_uppercase + string.digits, k=24))
 
 def generate_number(prefix):
-    suffix = ''.join(random.choices(string.digits, k=6))
-    return prefix + suffix
+    return prefix + ''.join(random.choices(string.digits, k=6))
 
 def generate_otp():
     return str(random.randint(100000, 999999))
 
 def detect_app():
-    apps = ['WhatsApp', 'Instagram', 'Facebook', 'Telegram', 'Google', 'TikTok', 'Microsoft', 'Netflix']
-    return random.choice(apps)
+    return random.choice(['WhatsApp', 'Instagram', 'Facebook', 'Telegram', 'Google', 'TikTok', 'Microsoft', 'Netflix'])
 
 def generate_otp_message(code, app):
-    messages = [
+    return random.choice([
         f"{code} is your {app} verification code.",
         f"<#> {code} is your {app} code. Don't share it.",
         f"Enter {code} on {app} to verify your account.",
-        f"Your {app} code: {code}",
-        f"{app} verification: {code}",
-    ]
-    return random.choice(messages)
+    ])
 
-# ============================================
-# ROUTES
 # ============================================
 @app.route('/')
 def index():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
     return redirect(url_for('login_page'))
 
 @app.route('/login')
@@ -93,18 +133,10 @@ def api_signup():
     api_key = generate_api_key()
     
     try:
-        supabase.table('users').insert({
-            'email': email,
-            'username': username,
-            'telegram': telegram,
-            'password': hashed,
-            'api_key': api_key,
-            'balance': 0,
-            'total_earned': 0,
-            'total_withdrawn': 0
-        }).execute()
+        query("INSERT INTO users (email, username, telegram, password, api_key) VALUES (?, ?, ?, ?, ?)",
+              (email, username, telegram, hashed, api_key))
         return jsonify({'success': True, 'message': 'Account created!'})
-    except Exception as e:
+    except:
         return jsonify({'error': 'Email or username already exists'}), 400
 
 @app.route('/api/auth/login', methods=['POST'])
@@ -114,16 +146,14 @@ def api_login():
     password = data.get('password', '').strip()
     
     hashed = hashlib.sha256(password.encode()).hexdigest()
+    user = query("SELECT id, email, username FROM users WHERE email=? AND password=?",
+                 (email, hashed), fetchone=True)
     
-    res = supabase.table('users').select('*').eq('email', email).eq('password', hashed).execute()
-    
-    if res.data:
-        user = res.data[0]
-        session['user_id'] = user['id']
-        session['email'] = user['email']
-        session['username'] = user['username']
+    if user:
+        session['user_id'] = user[0]
+        session['email'] = user[1]
+        session['username'] = user[2]
         return jsonify({'success': True})
-    
     return jsonify({'error': 'Invalid credentials'}), 401
 
 @app.route('/api/auth/logout', methods=['POST'])
@@ -131,9 +161,6 @@ def api_logout():
     session.clear()
     return jsonify({'success': True})
 
-# ============================================
-# DASHBOARD
-# ============================================
 @app.route('/dashboard')
 @login_required
 def dashboard():
@@ -142,34 +169,21 @@ def dashboard():
 @app.route('/api/dashboard/stats')
 @login_required
 def dashboard_stats():
-    user_id = session['user_id']
+    uid = session['user_id']
     today = datetime.now().strftime('%Y-%m-%d')
     
-    today_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).gte('created_at', today).execute().count
-    
-    today_otps = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).eq('status', 'success').gte('created_at', today).execute().count
-    
-    all_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).execute().count
-    active_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).eq('status', 'success').execute().count
-    pending_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).eq('status', 'waiting').execute().count
-    
-    user = supabase.table('users').select('balance,total_earned,total_withdrawn').eq('id', user_id).execute()
-    u = user.data[0] if user.data else {}
-    
+    u = query("SELECT balance, total_earned, total_withdrawn FROM users WHERE id=?", (uid,), fetchone=True)
     return jsonify({
-        'today_numbers': today_numbers,
-        'today_otps': today_otps,
-        'all_numbers': all_numbers,
-        'active_numbers': active_numbers,
-        'pending_numbers': pending_numbers,
-        'balance': u.get('balance', 0),
-        'total_earned': u.get('total_earned', 0),
-        'total_withdrawn': u.get('total_withdrawn', 0),
+        'today_numbers': query("SELECT COUNT(*) FROM numbers WHERE user_id=? AND date(created_at)=?", (uid, today), fetchone=True)[0],
+        'today_otps': query("SELECT COUNT(*) FROM numbers WHERE user_id=? AND status='success' AND date(created_at)=?", (uid, today), fetchone=True)[0],
+        'all_numbers': query("SELECT COUNT(*) FROM numbers WHERE user_id=?", (uid,), fetchone=True)[0],
+        'active_numbers': query("SELECT COUNT(*) FROM numbers WHERE user_id=? AND status='success'", (uid,), fetchone=True)[0],
+        'pending_numbers': query("SELECT COUNT(*) FROM numbers WHERE user_id=? AND status='waiting'", (uid,), fetchone=True)[0],
+        'balance': u[0] if u else 0,
+        'total_earned': u[1] if u else 0,
+        'total_withdrawn': u[2] if u else 0,
     })
 
-# ============================================
-# NUMBERS
-# ============================================
 @app.route('/numbers')
 @login_required
 def numbers_page():
@@ -180,86 +194,57 @@ def numbers_page():
 def generate_numbers():
     data = request.json
     prefix = data.get('prefix', '26134')
-    quantity = min(int(data.get('quantity', 1)), 10)
-    
-    user_id = session['user_id']
-    numbers = []
-    
-    for _ in range(quantity):
-        number = generate_number(prefix)
-        supabase.table('numbers').insert({
-            'user_id': user_id,
-            'number': number,
-            'prefix': prefix,
-            'country': 'Madagascar',
-            'source': 'web',
-            'status': 'waiting'
-        }).execute()
-        numbers.append(number)
-    
-    return jsonify({'success': True, 'numbers': numbers})
+    qty = min(int(data.get('quantity', 1)), 10)
+    uid = session['user_id']
+    nums = []
+    for _ in range(qty):
+        n = generate_number(prefix)
+        query("INSERT INTO numbers (user_id, number, prefix, country, source) VALUES (?,?,?,?,?)",
+              (uid, n, prefix, 'Madagascar', 'web'))
+        nums.append(n)
+    return jsonify({'success': True, 'numbers': nums})
 
 @app.route('/api/numbers/list')
 @login_required
 def list_numbers():
-    user_id = session['user_id']
-    res = supabase.table('numbers').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(50).execute()
-    
-    return jsonify({'numbers': res.data if res.data else []})
+    rows = query("SELECT * FROM numbers WHERE user_id=? ORDER BY created_at DESC LIMIT 50",
+                 (session['user_id'],), fetchall=True)
+    cols = ['id','user_id','number','prefix','country','status','source','otp_code','otp_message','app_name','created_at']
+    return jsonify({'numbers': [dict(zip(cols, r)) for r in rows] if rows else []})
 
 @app.route('/api/numbers/generate-otp', methods=['POST'])
 @login_required
 def api_generate_otp():
     data = request.json
-    number_id = data.get('number_id')
-    number = data.get('number')
+    nid = data.get('number_id')
+    num = data.get('number')
     prefix = data.get('prefix', '26134')
-    
     code = generate_otp()
-    app = detect_app()
-    message = generate_otp_message(code, app)
+    app_name = detect_app()
+    msg = generate_otp_message(code, app_name)
     
-    supabase.table('numbers').update({
-        'status': 'success',
-        'otp_code': code,
-        'otp_message': message,
-        'app_name': app
-    }).eq('id', number_id).execute()
+    query("UPDATE numbers SET status='success', otp_code=?, otp_message=?, app_name=? WHERE id=?",
+          (code, msg, app_name, nid))
+    query("INSERT INTO console_logs (number, prefix, message, app_name) VALUES (?,?,?,?)",
+          (num, prefix, msg, app_name))
     
-    supabase.table('console_logs').insert({
-        'number': number,
-        'prefix': prefix,
-        'message': message,
-        'app_name': app
-    }).execute()
+    uid = session['user_id']
+    query("UPDATE users SET balance=balance+0.05, total_earned=total_earned+0.05 WHERE id=?", (uid,))
     
-    user_id = session['user_id']
-    user = supabase.table('users').select('balance,total_earned').eq('id', user_id).execute()
-    if user.data:
-        bal = (user.data[0].get('balance') or 0) + 0.05
-        te = (user.data[0].get('total_earned') or 0) + 0.05
-        supabase.table('users').update({'balance': bal, 'total_earned': te}).eq('id', user_id).execute()
-    
-    return jsonify({'success': True, 'code': code, 'message': message, 'app': app})
+    return jsonify({'success': True, 'code': code, 'message': msg, 'app': app_name})
 
 @app.route('/api/numbers/delete', methods=['POST'])
 @login_required
 def delete_number():
-    data = request.json
-    number_id = data.get('number_id')
-    supabase.table('numbers').delete().eq('id', number_id).execute()
+    query("DELETE FROM numbers WHERE id=? AND user_id=?", (request.json.get('number_id'), session['user_id']))
     return jsonify({'success': True})
 
 @app.route('/api/numbers/clear', methods=['POST'])
 @login_required
 def clear_numbers():
-    user_id = session['user_id']
-    supabase.table('numbers').delete().eq('user_id', user_id).execute()
+    query("DELETE FROM numbers WHERE user_id=?", (session['user_id'],))
     return jsonify({'success': True})
 
-# ============================================
-# WALLET
-# ============================================
 @app.route('/wallet')
 @login_required
 def wallet_page():
@@ -268,56 +253,36 @@ def wallet_page():
 @app.route('/api/wallet/info')
 @login_required
 def wallet_info():
-    user_id = session['user_id']
-    res = supabase.table('users').select('balance,total_earned,total_withdrawn,api_key').eq('id', user_id).execute()
-    u = res.data[0] if res.data else {}
-    
+    u = query("SELECT balance, total_earned, total_withdrawn, api_key FROM users WHERE id=?",
+              (session['user_id'],), fetchone=True)
     return jsonify({
-        'balance': u.get('balance', 0) or 0,
-        'total_earned': u.get('total_earned', 0) or 0,
-        'total_withdrawn': u.get('total_withdrawn', 0) or 0,
-        'api_key': u.get('api_key', ''),
+        'balance': u[0] or 0, 'total_earned': u[1] or 0,
+        'total_withdrawn': u[2] or 0, 'api_key': u[3] or ''
     })
 
 @app.route('/api/wallet/payout', methods=['POST'])
 @login_required
 def request_payout():
-    data = request.json
-    amount = float(data.get('amount', 0))
-    method = data.get('method', 'binance')
-    account = data.get('account', '')
-    
-    user_id = session['user_id']
-    user = supabase.table('users').select('balance,total_withdrawn').eq('id', user_id).execute()
-    
-    if not user.data or (user.data[0].get('balance') or 0) < amount:
+    d = request.json
+    amt = float(d.get('amount', 0))
+    uid = session['user_id']
+    u = query("SELECT balance, total_withdrawn FROM users WHERE id=?", (uid,), fetchone=True)
+    if not u or u[0] < amt:
         return jsonify({'error': 'Insufficient balance'}), 400
-    
-    supabase.table('transactions').insert({
-        'user_id': user_id,
-        'type': 'withdraw',
-        'amount': amount,
-        'method': method,
-        'account': account
-    }).execute()
-    
-    bal = (user.data[0].get('balance') or 0) - amount
-    tw = (user.data[0].get('total_withdrawn') or 0) + amount
-    supabase.table('users').update({'balance': bal, 'total_withdrawn': tw}).eq('id', user_id).execute()
-    
-    return jsonify({'success': True, 'message': 'Payout requested!'})
+    query("INSERT INTO transactions (user_id, type, amount, method, account) VALUES (?,?,?,?,?)",
+          (uid, 'withdraw', amt, d.get('method','binance'), d.get('account','')))
+    query("UPDATE users SET balance=balance-?, total_withdrawn=total_withdrawn+? WHERE id=?",
+          (amt, amt, uid))
+    return jsonify({'success': True})
 
 @app.route('/api/wallet/transactions')
 @login_required
 def wallet_transactions():
-    user_id = session['user_id']
-    res = supabase.table('transactions').select('*').eq('user_id', user_id).order('created_at', desc=True).limit(20).execute()
-    
-    return jsonify({'transactions': res.data if res.data else []})
+    rows = query("SELECT * FROM transactions WHERE user_id=? ORDER BY created_at DESC LIMIT 20",
+                 (session['user_id'],), fetchall=True)
+    cols = ['id','user_id','type','amount','method','account','status','created_at']
+    return jsonify({'transactions': [dict(zip(cols, r)) for r in rows] if rows else []})
 
-# ============================================
-# CONSOLE
-# ============================================
 @app.route('/console')
 @login_required
 def console_page():
@@ -326,19 +291,15 @@ def console_page():
 @app.route('/api/console/logs')
 @login_required
 def console_logs():
-    res = supabase.table('console_logs').select('*').order('created_at', desc=True).limit(50).execute()
-    return jsonify({'logs': res.data if res.data else []})
+    rows = query("SELECT * FROM console_logs ORDER BY created_at DESC LIMIT 50", fetchall=True)
+    cols = ['id','number','prefix','message','app_name','created_at']
+    return jsonify({'logs': [dict(zip(cols, r)) for r in rows] if rows else []})
 
-# ============================================
-# API DOCS
-# ============================================
 @app.route('/api-docs')
 @login_required
 def api_docs():
     return render_template('api_docs.html')
 
-# ============================================
-# RUN
-# ============================================
 if __name__ == '__main__':
+    init_db()
     app.run(debug=True, host='0.0.0.0', port=5000)
