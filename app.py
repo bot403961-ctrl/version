@@ -22,7 +22,7 @@ app.secret_key = os.urandom(24).hex()
 # SUPABASE CONFIG
 # ============================================
 SUPABASE_URL = 'https://qvbtzeqvteavcczrywoi.supabase.co'
-SUPABASE_KEY = 'sb_publishable_2dTOK8q44KmKaAqKjrVJlQ_Q1LAHZOF'
+SUPABASE_KEY = 'sb_secret_xcXTo3D54dDg6OGeEAO8vA_4Ci0QpNO'
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -105,7 +105,7 @@ def api_signup():
         }).execute()
         return jsonify({'success': True, 'message': 'Account created!'})
     except Exception as e:
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': 'Email or username already exists'}), 400
 
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
@@ -145,13 +145,10 @@ def dashboard_stats():
     user_id = session['user_id']
     today = datetime.now().strftime('%Y-%m-%d')
     
-    # Numbers today
     today_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).gte('created_at', today).execute().count
     
-    # OTPs today
     today_otps = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).eq('status', 'success').gte('created_at', today).execute().count
     
-    # All stats
     all_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).execute().count
     active_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).eq('status', 'success').execute().count
     pending_numbers = supabase.table('numbers').select('count', count='exact').eq('user_id', user_id).eq('status', 'waiting').execute().count
@@ -229,7 +226,6 @@ def api_generate_otp():
         'app_name': app
     }).eq('id', number_id).execute()
     
-    # Console log
     supabase.table('console_logs').insert({
         'number': number,
         'prefix': prefix,
@@ -237,12 +233,11 @@ def api_generate_otp():
         'app_name': app
     }).execute()
     
-    # Add earnings
     user_id = session['user_id']
     user = supabase.table('users').select('balance,total_earned').eq('id', user_id).execute()
     if user.data:
-        bal = user.data[0]['balance'] + 0.05
-        te = user.data[0]['total_earned'] + 0.05
+        bal = (user.data[0].get('balance') or 0) + 0.05
+        te = (user.data[0].get('total_earned') or 0) + 0.05
         supabase.table('users').update({'balance': bal, 'total_earned': te}).eq('id', user_id).execute()
     
     return jsonify({'success': True, 'code': code, 'message': message, 'app': app})
@@ -278,9 +273,9 @@ def wallet_info():
     u = res.data[0] if res.data else {}
     
     return jsonify({
-        'balance': u.get('balance', 0),
-        'total_earned': u.get('total_earned', 0),
-        'total_withdrawn': u.get('total_withdrawn', 0),
+        'balance': u.get('balance', 0) or 0,
+        'total_earned': u.get('total_earned', 0) or 0,
+        'total_withdrawn': u.get('total_withdrawn', 0) or 0,
         'api_key': u.get('api_key', ''),
     })
 
@@ -293,9 +288,9 @@ def request_payout():
     account = data.get('account', '')
     
     user_id = session['user_id']
-    user = supabase.table('users').select('balance').eq('id', user_id).execute()
+    user = supabase.table('users').select('balance,total_withdrawn').eq('id', user_id).execute()
     
-    if not user.data or user.data[0]['balance'] < amount:
+    if not user.data or (user.data[0].get('balance') or 0) < amount:
         return jsonify({'error': 'Insufficient balance'}), 400
     
     supabase.table('transactions').insert({
@@ -306,8 +301,8 @@ def request_payout():
         'account': account
     }).execute()
     
-    bal = user.data[0]['balance'] - amount
-    tw = user.data[0].get('total_withdrawn', 0) + amount
+    bal = (user.data[0].get('balance') or 0) - amount
+    tw = (user.data[0].get('total_withdrawn') or 0) + amount
     supabase.table('users').update({'balance': bal, 'total_withdrawn': tw}).eq('id', user_id).execute()
     
     return jsonify({'success': True, 'message': 'Payout requested!'})
