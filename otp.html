@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taker SMS - الأكواد</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; }
+        .header { background: #1a1a2e; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00ff88; }
+        .header h1 { color: #00ff88; font-size: 20px; }
+        .header a { color: #aaa; text-decoration: none; }
+        .container { max-width: 900px; margin: auto; padding: 15px; }
+        .nav { display: flex; gap: 10px; margin: 15px 0; }
+        .nav a { flex: 1; padding: 12px; background: #1a1a2e; border-radius: 10px; text-align: center; color: #fff; text-decoration: none; }
+        .nav a.active { background: #00ff88; color: #000; }
+        .card { background: #1a1a2e; border-radius: 12px; padding: 15px; margin: 10px 0; }
+        .otp-code { font-size: 28px; color: #00ff88; font-weight: bold; letter-spacing: 5px; }
+        .otp-number { color: #aaa; font-size: 14px; }
+        .otp-msg { color: #ddd; font-size: 14px; margin-top: 5px; }
+        .stats { display: flex; gap: 15px; margin: 15px 0; }
+        .stat { flex: 1; background: #1a1a2e; border-radius: 12px; padding: 15px; text-align: center; }
+        .stat .value { font-size: 28px; color: #00ff88; }
+        .stat .label { color: #aaa; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📩 Taker SMS - الأكواد</h1>
+        <a href="index.html">🏠 الرئيسية</a>
+    </div>
+
+    <div class="container">
+        <div class="nav">
+            <a href="index.html">📱 احصل على رقم</a>
+            <a href="console.html">🟢 Console</a>
+            <a href="otp.html" class="active">📩 الأكواد</a>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="value" id="otpCount">0</div>
+                <div class="label">📩 أكواد</div>
+            </div>
+            <div class="stat">
+                <div class="value" id="fbCount">0</div>
+                <div class="label">📘 Facebook</div>
+            </div>
+            <div class="stat">
+                <div class="value" id="waCount">0</div>
+                <div class="label">💬 WhatsApp</div>
+            </div>
+        </div>
+
+        <div id="otpList">⏳ جاري التحميل...</div>
+    </div>
+
+    <script>
+        const API_URL = "https://api.2oo9.cloud/MXS47FLFX0U/tness/@public/api";
+        const API_KEY = "MDP0C6NEHVI";
+
+        async function loadOTPs() {
+            try {
+                const resp = await fetch(`${API_URL}/success-otp`, {
+                    headers: { 'mauthapi': API_KEY }
+                });
+                const data = await resp.json();
+                
+                if (data.meta && data.meta.code === 200) {
+                    const otps = data.data.otps || [];
+                    document.getElementById('otpCount').textContent = otps.length;
+                    
+                    let fb = 0, wa = 0;
+                    let html = '';
+                    
+                    otps.slice(0, 30).forEach(otp => {
+                        const match = otp.message.match(/\b(\d{4,8})\b/);
+                        const code = match ? match[1] : '----';
+                        const msg = otp.message.toLowerCase();
+                        
+                        if (msg.includes('facebook') || msg.includes('fb-')) fb++;
+                        if (msg.includes('whatsapp')) wa++;
+                        
+                        html += `<div class="card">
+                            <div class="otp-number">📞 ${otp.number}</div>
+                            <div class="otp-code">${code}</div>
+                            <div class="otp-msg">${otp.message.substring(0, 100)}</div>
+                        </div>`;
+                    });
+                    
+                    document.getElementById('fbCount').textContent = fb;
+                    document.getElementById('waCount').textContent = wa;
+                    document.getElementById('otpList').innerHTML = html || 'لا توجد أكواد';
+                }
+            } catch (e) {
+                document.getElementById('otpList').textContent = '❌ خطأ';
+            }
+        }
+
+        loadOTPs();
+        setInterval(loadOTPs, 5000);
+    </script>
+</body>
+</html>
