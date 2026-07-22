@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taker SMS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; }
+        .header { background: #1a1a2e; padding: 15px; text-align: center; border-bottom: 2px solid #00d2ff; }
+        .header h1 { color: #00d2ff; }
+        .container { max-width: 600px; margin: auto; padding: 15px; }
+        .card { background: #1a1a2e; border-radius: 12px; padding: 20px; margin: 15px 0; }
+        .card h3 { color: #00d2ff; margin-bottom: 15px; }
+        select, input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; }
+        select, input { background: #2a2a3e; color: #fff; }
+        button { background: #00d2ff; color: #000; font-weight: bold; cursor: pointer; }
+        .result { background: #16213e; padding: 15px; border-radius: 8px; margin: 10px 0; }
+        .code { font-size: 32px; color: #00ff88; text-align: center; letter-spacing: 8px; font-weight: bold; }
+        .info { color: #aaa; font-size: 14px; }
+        .number { color: #fff; font-size: 20px; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
+        .status-waiting { color: #ffaa00; }
+        .status-success { color: #00ff88; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ Taker SMS</h1>
+        <p style="color:#aaa">لوحة OTP - استقبال الأكواد</p>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h3>🛠 اختر الخدمة</h3>
+            <select id="service">
+                <option value="facebook">📘 Facebook</option>
+                <option value="whatsapp">💬 WhatsApp</option>
+            </select>
+        </div>
+
+        <div class="card">
+            <h3>🌍 اختر الدولة</h3>
+            <select id="country">
+                <option value="26134">🇲🇬 Madagascar 1</option>
+                <option value="26138">🇲🇬 Madagascar 2</option>
+                <option value="23274">🇸🇱 Sierra Leone</option>
+                <option value="22465">🇬🇳 Guinea</option>
+                <option value="2236">🇬🇼 Guinea-Bissau</option>
+            </select>
+            <button onclick="getNumber()">📱 احصل على رقم</button>
+        </div>
+
+        <div class="card" id="numberCard" style="display:none">
+            <h3>📞 معلومات الرقم</h3>
+            <div class="result">
+                <div class="info">الرقم</div>
+                <div class="number" id="numberDisplay"></div>
+            </div>
+            <div class="result">
+                <div class="info">الحالة</div>
+                <div class="status-waiting" id="statusText">⏳ في انتظار الكود...</div>
+            </div>
+            <div class="result">
+                <div class="code" id="codeDisplay">----</div>
+            </div>
+            <button onclick="checkOTP()">🔄 تحديث الكود</button>
+        </div>
+    </div>
+
+    <div class="footer">
+        Taker SMS © 2026 | Powered by STEX
+    </div>
+
+    <script>
+        const API_URL = "https://api.2oo9.cloud/MXS47FLFX0U/tness/@public/api";
+        const API_KEY = "MDP0C6NEHVI";
+        let currentNumber = "";
+        let checkInterval = null;
+
+        async function getNumber() {
+            const prefix = document.getElementById('country').value;
+            const btn = event.target;
+            btn.textContent = "⏳ جاري...";
+            btn.disabled = true;
+            
+            try {
+                const resp = await fetch(`${API_URL}/getnum`, {
+                    method: 'POST',
+                    headers: { 'mauthapi': API_KEY, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rid: prefix })
+                });
+                const data = await resp.json();
+                
+                if (data.meta && data.meta.code === 200) {
+                    currentNumber = data.data.no_plus_number || data.data.national_number;
+                    document.getElementById('numberDisplay').textContent = '+' + currentNumber;
+                    document.getElementById('numberCard').style.display = 'block';
+                    document.getElementById('codeDisplay').textContent = '----';
+                    document.getElementById('statusText').textContent = '⏳ في انتظار الكود...';
+                    document.getElementById('statusText').className = 'status-waiting';
+                    
+                    if (checkInterval) clearInterval(checkInterval);
+                    checkInterval = setInterval(checkOTP, 3000);
+                } else {
+                    alert('❌ الرقم غير متاح: ' + (data.message || 'حاول مرة اخرى'));
+                }
+            } catch (e) {
+                alert('❌ خطأ في الاتصال');
+            }
+            
+            btn.textContent = "📱 احصل على رقم";
+            btn.disabled = false;
+        }
+
+        async function checkOTP() {
+            if (!currentNumber) return;
+            
+            try {
+                const resp = await fetch(`${API_URL}/success-otp`, {
+                    headers: { 'mauthapi': API_KEY }
+                });
+                const data = await resp.json();
+                
+                if (data.meta && data.meta.code === 200 && data.data && data.data.otps) {
+                    for (let otp of data.data.otps) {
+                        if (String(otp.number) === String(currentNumber)) {
+                            const match = otp.message.match(/\b(\d{4,8})\b/);
+                            if (match) {
+                                document.getElementById('codeDisplay').textContent = match[1];
+                                document.getElementById('statusText').textContent = '✅ تم استلام الكود!';
+                                document.getElementById('statusText').className = 'status-success';
+                                clearInterval(checkInterval);
+                            }
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+    </script>
+</body>
+</html>
