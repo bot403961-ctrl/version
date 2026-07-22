@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAKER SMS - Dashboard</title>
+    <style>
+        :root {
+            --bg: #0a0a1a; --card: #13132b; --purple: #6366f1;
+            --text: #e2e8f0; --text2: #94a3b8; --border: #1e1e3a;
+            --green: #4ade80; --red: #f87171; --yellow: #fbbf24;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text); padding-bottom: 80px; }
+        .header { background: var(--card); border-bottom: 1px solid var(--border); padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 100; }
+        .logo { font-size: 20px; font-weight: 800; background: linear-gradient(135deg, var(--purple), #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-btns { display: flex; gap: 10px; }
+        .btn-sm { padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; }
+        .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+        .btn-purple { background: var(--purple); color: white; }
+        .container { max-width: 900px; margin: 0 auto; padding: 20px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 25px; }
+        .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; text-align: center; }
+        .stat-value { font-size: 28px; font-weight: 700; color: var(--purple); }
+        .stat-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+        .section-title { font-size: 18px; font-weight: 700; margin-bottom: 15px; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); display: flex; justify-content: space-around; padding: 10px 0; z-index: 100; }
+        .nav-item { color: var(--text2); text-decoration: none; font-size: 11px; text-align: center; }
+        .nav-item.active { color: var(--purple); }
+        .nav-item span { display: block; font-size: 20px; margin-bottom: 2px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="logo">TAKER SMS</div>
+        <div class="header-btns">
+            <button class="btn-sm btn-outline" onclick="window.location.href='/api-docs'">API Docs</button>
+            <button class="btn-sm btn-purple" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2 style="margin-bottom:15px;">📊 Today's Stats</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="today-numbers">-</div><div class="stat-label">Numbers</div></div>
+            <div class="stat-card"><div class="stat-value" id="today-otps">-</div><div class="stat-label">OTPs</div></div>
+            <div class="stat-card"><div class="stat-value" id="today-earnings">-</div><div class="stat-label">Earnings</div></div>
+            <div class="stat-card"><div class="stat-value" id="today-date">-</div><div class="stat-label">Date</div></div>
+        </div>
+
+        <h2 class="section-title">📈 All-Time Stats</h2>
+        <div class="stats-grid">
+            <div class="stat-card"><div class="stat-value" id="all-numbers">-</div><div class="stat-label">Active Numbers</div></div>
+            <div class="stat-card"><div class="stat-value" id="all-otps">-</div><div class="stat-label">Success OTPs</div></div>
+            <div class="stat-card"><div class="stat-value" id="pending">-</div><div class="stat-label">Pending</div></div>
+            <div class="stat-card"><div class="stat-value" id="total-earned">-</div><div class="stat-label">Total Earned</div></div>
+        </div>
+    </div>
+
+    <div class="bottom-nav">
+        <a href="/dashboard" class="nav-item active"><span>📊</span>Dashboard</a>
+        <a href="/numbers" class="nav-item"><span>📱</span>Numbers</a>
+        <a href="/wallet" class="nav-item"><span>💰</span>Wallet</a>
+        <a href="/console" class="nav-item"><span>🖥️</span>Console</a>
+    </div>
+
+    <script>
+        async function loadStats() {
+            const res = await fetch('/api/dashboard/stats');
+            const data = await res.json();
+            document.getElementById('today-numbers').textContent = data.today_numbers;
+            document.getElementById('today-otps').textContent = data.today_otps;
+            document.getElementById('today-earnings').textContent = '$' + data.balance.toFixed(3);
+            document.getElementById('today-date').textContent = new Date().toLocaleDateString();
+            document.getElementById('all-numbers').textContent = data.active_numbers;
+            document.getElementById('all-otps').textContent = data.all_numbers;
+            document.getElementById('pending').textContent = data.pending_numbers;
+            document.getElementById('total-earned').textContent = '$' + data.total_earned.toFixed(2);
+        }
+        
+        async function logout() {
+            await fetch('/api/auth/logout', {method:'POST'});
+            window.location.href = '/login';
+        }
+        
+        loadStats();
+        setInterval(loadStats, 30000);
+    </script>
+</body>
+</html>
