@@ -1,142 +1,302 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taker SMS</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; }
-        .header { background: #1a1a2e; padding: 15px; text-align: center; border-bottom: 2px solid #00d2ff; }
-        .header h1 { color: #00d2ff; }
-        .container { max-width: 600px; margin: auto; padding: 15px; }
-        .card { background: #1a1a2e; border-radius: 12px; padding: 20px; margin: 15px 0; }
-        .card h3 { color: #00d2ff; margin-bottom: 15px; }
-        select, input, button { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: none; font-size: 16px; }
-        select, input { background: #2a2a3e; color: #fff; }
-        button { background: #00d2ff; color: #000; font-weight: bold; cursor: pointer; }
-        .result { background: #16213e; padding: 15px; border-radius: 8px; margin: 10px 0; }
-        .code { font-size: 32px; color: #00ff88; text-align: center; letter-spacing: 8px; font-weight: bold; }
-        .info { color: #aaa; font-size: 14px; }
-        .number { color: #fff; font-size: 20px; }
-        .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
-        .status-waiting { color: #ffaa00; }
-        .status-success { color: #00ff88; }
-    </style>
+    <title>XWD SMS - Virtual Numbers Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="header">
-        <h1>⚡ Taker SMS</h1>
-        <p style="color:#aaa">لوحة OTP - استقبال الأكواد</p>
-    </div>
-
-    <div class="container">
-        <div class="card">
-            <h3>🛠 اختر الخدمة</h3>
-            <select id="service">
-                <option value="facebook">📘 Facebook</option>
-                <option value="whatsapp">💬 WhatsApp</option>
-            </select>
-        </div>
-
-        <div class="card">
-            <h3>🌍 اختر الدولة</h3>
-            <select id="country">
-                <option value="26134">🇲🇬 Madagascar 1</option>
-                <option value="26138">🇲🇬 Madagascar 2</option>
-                <option value="23274">🇸🇱 Sierra Leone</option>
-                <option value="22465">🇬🇳 Guinea</option>
-                <option value="2236">🇬🇼 Guinea-Bissau</option>
-            </select>
-            <button onclick="getNumber()">📱 احصل على رقم</button>
-        </div>
-
-        <div class="card" id="numberCard" style="display:none">
-            <h3>📞 معلومات الرقم</h3>
-            <div class="result">
-                <div class="info">الرقم</div>
-                <div class="number" id="numberDisplay"></div>
+    <!-- Sign In Page -->
+    <div class="auth-container" id="signInPage">
+        <div class="auth-card glass">
+            <div class="auth-header">
+                <div class="logo">
+                    <i class="fas fa-message"></i>
+                    <span>XWD SMS</span>
+                </div>
+                <p>Sign in to your account</p>
             </div>
-            <div class="result">
-                <div class="info">الحالة</div>
-                <div class="status-waiting" id="statusText">⏳ في انتظار الكود...</div>
-            </div>
-            <div class="result">
-                <div class="code" id="codeDisplay">----</div>
-            </div>
-            <button onclick="checkOTP()">🔄 تحديث الكود</button>
+            <form id="signInForm">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="signInEmail" placeholder="Email address" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="signInPassword" placeholder="Password" required>
+                    <i class="fas fa-eye toggle-password"></i>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span>Sign In</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            <p class="auth-switch">Don't have an account? <a href="#" id="showSignUp">Sign Up</a></p>
         </div>
     </div>
 
-    <div class="footer">
-        Taker SMS © 2026 | Powered by STEX
+    <!-- Sign Up Page -->
+    <div class="auth-container hidden" id="signUpPage">
+        <div class="auth-card glass">
+            <div class="auth-header">
+                <div class="logo">
+                    <i class="fas fa-message"></i>
+                    <span>XWD SMS</span>
+                </div>
+                <p>Create your account</p>
+            </div>
+            <form id="signUpForm">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="signUpEmail" placeholder="Email address" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" id="signUpUsername" placeholder="Username" required>
+                </div>
+                <div class="input-group">
+                    <i class="fab fa-telegram"></i>
+                    <input type="text" id="signUpTelegram" placeholder="Telegram (@username)">
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="signUpPassword" placeholder="Password" required>
+                </div>
+                <button type="submit" class="btn-primary">
+                    <span>Sign Up</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            <p class="auth-switch">Already have an account? <a href="#" id="showSignIn">Sign In</a></p>
+        </div>
     </div>
 
-    <script>
-        const API_URL = "https://api.2oo9.cloud/MXS47FLFX0U/tness/@public/api";
-        const API_KEY = "MDP0C6NEHVI";
-        let currentNumber = "";
-        let checkInterval = null;
+    <!-- Main Dashboard -->
+    <div class="dashboard hidden" id="dashboard">
+        <!-- Desktop Sidebar -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-message"></i>
+                    <span>XWD SMS</span>
+                </div>
+            </div>
+            <ul class="nav-links">
+                <li><a href="#" class="nav-item active" data-page="overview"><i class="fas fa-th-large"></i><span>Overview</span></a></li>
+                <li><a href="#" class="nav-item" data-page="numbers"><i class="fas fa-phone"></i><span>Numbers</span></a></li>
+                <li><a href="#" class="nav-item" data-page="wallet"><i class="fas fa-wallet"></i><span>Wallet</span></a></li>
+                <li><a href="#" class="nav-item" data-page="console"><i class="fas fa-terminal"></i><span>Console</span></a></li>
+                <li><a href="#" class="nav-item" data-page="docs"><i class="fas fa-book"></i><span>API Docs</span></a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <button class="btn-logout" id="logoutBtn"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
+            </div>
+        </nav>
 
-        async function getNumber() {
-            const prefix = document.getElementById('country').value;
-            const btn = event.target;
-            btn.textContent = "⏳ جاري...";
-            btn.disabled = true;
-            
-            try {
-                const resp = await fetch(`${API_URL}/getnum`, {
-                    method: 'POST',
-                    headers: { 'mauthapi': API_KEY, 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ rid: prefix })
-                });
-                const data = await resp.json();
-                
-                if (data.meta && data.meta.code === 200) {
-                    currentNumber = data.data.no_plus_number || data.data.national_number;
-                    document.getElementById('numberDisplay').textContent = '+' + currentNumber;
-                    document.getElementById('numberCard').style.display = 'block';
-                    document.getElementById('codeDisplay').textContent = '----';
-                    document.getElementById('statusText').textContent = '⏳ في انتظار الكود...';
-                    document.getElementById('statusText').className = 'status-waiting';
-                    
-                    if (checkInterval) clearInterval(checkInterval);
-                    checkInterval = setInterval(checkOTP, 3000);
-                } else {
-                    alert('❌ الرقم غير متاح: ' + (data.message || 'حاول مرة اخرى'));
-                }
-            } catch (e) {
-                alert('❌ خطأ في الاتصال');
-            }
-            
-            btn.textContent = "📱 احصل على رقم";
-            btn.disabled = false;
-        }
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Page -->
+            <div class="page active" id="overview">
+                <header class="page-header">
+                    <h1>Dashboard Overview</h1>
+                    <p>Welcome back! Here's what's happening.</p>
+                </header>
+                <div class="stats-grid">
+                    <div class="stat-card glass">
+                        <div class="stat-icon purple"><i class="fas fa-phone"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="todayNumbers">0</span>
+                            <span class="stat-label">Numbers Leased Today</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="todayOTPs">0</span>
+                            <span class="stat-label">OTPs Received Today</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon blue"><i class="fas fa-dollar-sign"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="todayEarnings">$0.00</span>
+                            <span class="stat-label">Today's Earnings</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon orange"><i class="fas fa-calendar"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-value" id="currentDate">-</span>
+                            <span class="stat-label">Current Date</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="stats-grid all-time">
+                    <div class="stat-card glass">
+                        <div class="stat-info">
+                            <span class="stat-value" id="allActive">0</span>
+                            <span class="stat-label">Active Numbers</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-info">
+                            <span class="stat-value" id="allSuccess">0</span>
+                            <span class="stat-label">Successful OTPs</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-info">
+                            <span class="stat-value" id="allPending">0</span>
+                            <span class="stat-label">Pending Numbers</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-info">
+                            <span class="stat-value" id="allEarned">$45.50</span>
+                            <span class="stat-label">Total Earned</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-info">
+                            <span class="stat-value" id="allAPI">0</span>
+                            <span class="stat-label">API Hits</span>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-info">
+                            <span class="stat-value" id="allWeb">0</span>
+                            <span class="stat-label">Web Hits</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-        async function checkOTP() {
-            if (!currentNumber) return;
-            
-            try {
-                const resp = await fetch(`${API_URL}/success-otp`, {
-                    headers: { 'mauthapi': API_KEY }
-                });
-                const data = await resp.json();
-                
-                if (data.meta && data.meta.code === 200 && data.data && data.data.otps) {
-                    for (let otp of data.data.otps) {
-                        if (String(otp.number) === String(currentNumber)) {
-                            const match = otp.message.match(/\b(\d{4,8})\b/);
-                            if (match) {
-                                document.getElementById('codeDisplay').textContent = match[1];
-                                document.getElementById('statusText').textContent = '✅ تم استلام الكود!';
-                                document.getElementById('statusText').className = 'status-success';
-                                clearInterval(checkInterval);
-                            }
-                        }
-                    }
-                }
-            } catch (e) {}
-        }
-    </script>
+            <!-- Numbers Page -->
+            <div class="page" id="numbers">
+                <header class="page-header">
+                    <h1>Virtual Numbers</h1>
+                    <p>Request and manage your virtual phone numbers.</p>
+                </header>
+                <div class="request-form glass">
+                    <div class="form-row">
+                        <div class="input-group">
+                            <label>Range Prefix</label>
+                            <input type="text" id="rangePrefix" placeholder="e.g. 22501">
+                        </div>
+                        <div class="input-group">
+                            <label>Quantity</label>
+                            <input type="number" id="quantity" value="1" min="1" max="10">
+                        </div>
+                        <button class="btn-primary" id="getNumberBtn">
+                            <i class="fas fa-plus"></i> Get Number
+                        </button>
+                    </div>
+                    <button class="btn-danger" id="clearAllBtn" style="margin-top:10px;">
+                        <i class="fas fa-trash"></i> Clear All Numbers
+                    </button>
+                </div>
+                <div class="numbers-grid" id="numbersGrid">
+                    <p class="empty-state">No numbers allocated yet. Request one above.</p>
+                </div>
+            </div>
+
+            <!-- Wallet Page -->
+            <div class="page" id="wallet">
+                <header class="page-header"><h1>Wallet</h1><p>Manage your balance and payouts.</p></header>
+                <div class="wallet-grid">
+                    <div class="wallet-card glass">
+                        <span class="wallet-label">Current Balance</span>
+                        <span class="wallet-value" id="walletBalance">$0.3560</span>
+                    </div>
+                    <div class="wallet-card glass">
+                        <span class="wallet-label">All-Time Earned</span>
+                        <span class="wallet-value" id="walletEarned">$45.50</span>
+                    </div>
+                    <div class="wallet-card glass">
+                        <span class="wallet-label">Total Withdrawn</span>
+                        <span class="wallet-value" id="walletWithdrawn">$10.00</span>
+                    </div>
+                </div>
+                <div class="api-key-section glass">
+                    <h3>API Key</h3>
+                    <div class="api-key-display">
+                        <code id="apiKeyDisplay">••••••••••••••••</code>
+                        <button id="toggleApiKey"><i class="fas fa-eye"></i></button>
+                        <button id="copyApiKey"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+                <div class="payout-form glass">
+                    <h3>Request Payout</h3>
+                    <div class="form-row">
+                        <input type="number" id="payoutAmount" placeholder="Amount (USD)" step="0.01">
+                        <select id="payoutMethod">
+                            <option value="binance">Binance Pay</option>
+                            <option value="esewa">eSewa</option>
+                        </select>
+                        <input type="text" id="payoutAccount" placeholder="Account ID">
+                        <button class="btn-primary" id="requestPayoutBtn">Request</button>
+                    </div>
+                </div>
+                <div class="transactions glass" id="transactionsList">
+                    <h3>Transaction History</h3>
+                </div>
+            </div>
+
+            <!-- Console Page -->
+            <div class="page" id="console">
+                <header class="page-header"><h1>Live Console</h1><p>Real-time OTP feed.</p></header>
+                <div class="console-feed glass" id="consoleFeed">
+                    <p class="empty-state">Waiting for OTP hits...</p>
+                </div>
+            </div>
+
+            <!-- API Docs Page -->
+            <div class="page" id="docs">
+                <header class="page-header"><h1>API Documentation</h1><p>Integrate with our API.</p></header>
+                <div class="docs-content glass">
+                    <div class="api-section">
+                        <h3>Base URL</h3>
+                        <code class="api-url">https://api.xwdsms.org/v1</code>
+                    </div>
+                    <div class="api-section">
+                        <h3>Popular Prefixes</h3>
+                        <div class="prefix-buttons" id="prefixButtons"></div>
+                    </div>
+                    <div class="api-section">
+                        <h3>POST /api/v1/get-number</h3>
+                        <p>Allocate a new virtual number.</p>
+                        <pre><code>{
+  "range": "22501",
+  "quantity": 1
+}</code></pre>
+                    </div>
+                    <div class="api-section">
+                        <h3>GET /api/v1/check-otp</h3>
+                        <p>Check OTP for a number.</p>
+                        <pre><code>GET /api/v1/check-otp?number=+22501020304</code></pre>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="mobile-nav" id="mobileNav">
+        <a href="#" class="mobile-nav-item active" data-page="overview"><i class="fas fa-th-large"></i><span>Home</span></a>
+        <a href="#" class="mobile-nav-item" data-page="numbers"><i class="fas fa-phone"></i><span>Numbers</span></a>
+        <a href="#" class="mobile-nav-item" data-page="wallet"><i class="fas fa-wallet"></i><span>Wallet</span></a>
+        <a href="#" class="mobile-nav-item" data-page="console"><i class="fas fa-terminal"></i><span>Console</span></a>
+        <a href="#" class="mobile-nav-item" data-page="docs"><i class="fas fa-book"></i><span>Docs</span></a>
+    </nav>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
