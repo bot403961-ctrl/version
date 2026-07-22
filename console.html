@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taker SMS - Console</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0a; color: #fff; font-family: 'Segoe UI', sans-serif; }
+        .header { background: #1a1a2e; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00d2ff; }
+        .header h1 { color: #00d2ff; font-size: 20px; }
+        .header a { color: #aaa; text-decoration: none; }
+        .container { max-width: 900px; margin: auto; padding: 15px; }
+        .console { background: #0d1117; border-radius: 12px; padding: 20px; height: 70vh; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; }
+        .line { padding: 6px 0; border-bottom: 1px solid #1a1a2e; }
+        .time { color: #666; }
+        .country { color: #ffaa00; }
+        .service { color: #00d2ff; }
+        .number { color: #aaa; }
+        .code { color: #00ff88; font-weight: bold; }
+        .stats { display: flex; gap: 15px; margin: 15px 0; }
+        .stat { flex: 1; background: #1a1a2e; border-radius: 12px; padding: 15px; text-align: center; }
+        .stat .value { font-size: 28px; color: #00d2ff; }
+        .stat .label { color: #aaa; font-size: 13px; }
+        .nav { display: flex; gap: 10px; margin: 15px 0; }
+        .nav a { flex: 1; padding: 12px; background: #1a1a2e; border-radius: 10px; text-align: center; color: #fff; text-decoration: none; }
+        .nav a.active { background: #00d2ff; color: #000; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚡ Taker SMS - Console</h1>
+        <a href="index.html">🏠 الرئيسية</a>
+    </div>
+
+    <div class="container">
+        <div class="nav">
+            <a href="index.html">📱 احصل على رقم</a>
+            <a href="console.html" class="active">🟢 Console</a>
+            <a href="otp.html">📩 الأكواد</a>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="value" id="totalCount">0</div>
+                <div class="label">📱 رسائل</div>
+            </div>
+            <div class="stat">
+                <div class="value" id="svcCount">0</div>
+                <div class="label">🛠 خدمات</div>
+            </div>
+            <div class="stat">
+                <div class="value" id="ctryCount">0</div>
+                <div class="label">🌍 دول</div>
+            </div>
+        </div>
+
+        <div class="console" id="console">⏳ جاري التحميل...</div>
+    </div>
+
+    <script>
+        const API_URL = "https://api.2oo9.cloud/MXS47FLFX0U/tness/@public/api";
+        const API_KEY = "MDP0C6NEHVI";
+        
+        const COUNTRY_MAP = {
+            "261": "🇲🇬 Madagascar", "232": "🇸🇱 Sierra Leone", "224": "🇬🇳 Guinea",
+            "225": "🇨🇮 Ivory Coast", "229": "🇧🇯 Benin", "228": "🇹🇬 Togo",
+            "251": "🇪🇹 Ethiopia", "223": "🇬🇼 Guinea-Bissau", "254": "🇰🇪 Kenya",
+            "992": "🇹🇯 Tajikistan", "996": "🇰🇬 Kyrgyzstan"
+        };
+
+        function getCountry(rng) {
+            for (let code in COUNTRY_MAP) {
+                if (rng.startsWith(code)) return COUNTRY_MAP[code];
+            }
+            return "🌍 Other";
+        }
+
+        async function loadConsole() {
+            try {
+                const resp = await fetch(`${API_URL}/console`, {
+                    headers: { 'mauthapi': API_KEY }
+                });
+                const data = await resp.json();
+                
+                if (data.meta && data.meta.code === 200) {
+                    const successes = data.data.successes || [];
+                    document.getElementById('totalCount').textContent = successes.length;
+                    
+                    const services = new Set(successes.map(s => s.sid));
+                    document.getElementById('svcCount').textContent = services.size;
+                    
+                    const countries = new Set(successes.map(s => getCountry(s.range.replace('XXX',''))));
+                    document.getElementById('ctryCount').textContent = countries.size;
+                    
+                    let html = '';
+                    successes.slice(0, 50).forEach(item => {
+                        const rng = item.range.replace('XXX', '');
+                        const country = getCountry(rng);
+                        const time = new Date(item.time).toLocaleTimeString('ar-SA');
+                        const msg = item.message.substring(0, 60);
+                        
+                        html += `<div class="line">
+                            <span class="time">${time}</span> |
+                            <span class="country">${country}</span> |
+                            <span class="service">${item.sid}</span> |
+                            <span class="number">${rng}XXX</span> |
+                            <span class="code">${msg}</span>
+                        </div>`;
+                    });
+                    
+                    document.getElementById('console').innerHTML = html || 'لا توجد رسائل حالياً';
+                }
+            } catch (e) {
+                document.getElementById('console').textContent = '❌ خطأ في الاتصال';
+            }
+        }
+
+        loadConsole();
+        setInterval(loadConsole, 5000);
+    </script>
+</body>
+</html>
