@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TAKER SMS - Sign Up</title>
+    <style>
+        :root {
+            --bg: #0a0a1a;
+            --card: #13132b;
+            --purple: #6366f1;
+            --text: #e2e8f0;
+            --text2: #94a3b8;
+            --border: #1e1e3a;
+            --input: #0d0d22;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 40px 30px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(99, 102, 241, 0.1);
+        }
+        .logo {
+            font-size: 28px;
+            font-weight: 800;
+            text-align: center;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--purple), #818cf8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .subtitle { text-align: center; color: var(--text2); margin-bottom: 30px; font-size: 14px; }
+        input {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--input);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            color: var(--text);
+            font-size: 15px;
+            margin-bottom: 15px;
+            outline: none;
+        }
+        input:focus { border-color: var(--purple); }
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: var(--purple);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn:hover { background: #5558e6; }
+        .link { text-align: center; margin-top: 20px; color: var(--text2); }
+        .link a { color: var(--purple); text-decoration: none; }
+        .error { color: #f87171; text-align: center; margin-bottom: 10px; font-size: 13px; display: none; }
+        .success { color: #4ade80; text-align: center; margin-bottom: 10px; font-size: 13px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">TAKER SMS</div>
+        <div class="subtitle">Create your free account</div>
+        
+        <div class="error" id="error"></div>
+        <div class="success" id="success"></div>
+        
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="email" id="email" placeholder="Email address" required>
+        <input type="text" id="telegram" placeholder="Telegram (optional)">
+        <input type="password" id="password" placeholder="Password" required>
+        <button class="btn" onclick="signup()">Create Account</button>
+        
+        <div class="link">
+            Already have an account? <a href="/login">Sign In</a>
+        </div>
+    </div>
+
+    <script>
+        async function signup() {
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+            const telegram = document.getElementById('telegram').value;
+            const password = document.getElementById('password').value;
+            
+            const res = await fetch('/api/auth/signup', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username, email, telegram, password})
+            });
+            
+            const data = await res.json();
+            
+            if (data.success) {
+                document.getElementById('success').style.display = 'block';
+                document.getElementById('success').textContent = 'Account created! Redirecting...';
+                setTimeout(() => { window.location.href = '/login'; }, 1500);
+            } else {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = data.error;
+            }
+        }
+    </script>
+</body>
+</html>
